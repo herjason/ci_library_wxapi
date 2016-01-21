@@ -4,14 +4,14 @@
   */
 
 //define your token
-//define("TOKEN", "wsptoken20140815");
+//define("TOKEN", "wddgegj53hsgs");
 
 class wxapi
 {
 	//超级对象
 	private $_instance;
-	private $AppID = "";
-	private $AppSecret = "";
+	private $AppID = "";//定义公众号AppID
+	private $AppSecret = "";//定义公众号AppSecret
 	
 	public function __construct()
 	{
@@ -45,10 +45,10 @@ class wxapi
 	public function post_wx_template($param)
 	{
 		$access_token = $this->get_access_token($param);
-		$rsp=req_url("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=".$access_token,$param["template_param"]);
+		$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=".$access_token,$param["template_param"]);
 		if(isset($rsp["errcode"])&&$rsp["errcode"]==40001){
 			$access_token = $this->req_access_token();
-			$rsp=req_url("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=".$access_token,$param["template_param"]);
+			$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=".$access_token,$param["template_param"]);
 		}
 		return $rsp;
 	}
@@ -60,6 +60,28 @@ class wxapi
 		if(isset($rsp["errcode"])&&$rsp["errcode"]==40001){
 			$access_token=$this->req_access_token();
 			$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/user/info?access_token=".$access_token."&openid=".$param["openid"]."&lang=zh_CN");
+		}
+		return $rsp;
+	}
+	//自定义菜单查询：选填AppID,AppSecret
+	public function get_menu($param)
+	{
+		$access_token=$this->get_access_token($param);
+		$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/get?access_token=".$access_token);
+		if(isset($rsp["errcode"])&&$rsp["errcode"]==40001){
+			$access_token=$this->req_access_token();
+			$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/get?access_token=".$access_token);
+		}
+		return $rsp;
+	}
+	//自定义菜单创建：必填body;选填AppID,AppSecret
+	public function create_menu($param)
+	{
+		$access_token=$this->get_access_token($param);
+		$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token,array("body"=>$param["body"]));
+		if(isset($rsp["errcode"])&&$rsp["errcode"]==40001){
+			$access_token=$this->req_access_token();
+			$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token,array("body"=>$param["body"]));
 		}
 		return $rsp;
 	}
