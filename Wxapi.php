@@ -26,9 +26,12 @@ class wxapi
 		
 		$ch = curl_init ();
 		curl_setopt ( $ch, CURLOPT_URL, $url );
-		if (count($params)>0) {
+		if (!empty($params)) {
 			curl_setopt($ch, CURLOPT_POST, true); // post
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params)); // post数据 可为数组、连接字串
+			if(is_array($params)){
+				$params=json_encode($params);
+			}
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $params); // post数据 可为数组、连接字串
 		}
 		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
@@ -78,10 +81,13 @@ class wxapi
 	public function create_menu($param)
 	{
 		$access_token=$this->get_access_token($param);
-		$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token,array("body"=>$param["body"]));
+		if(is_array($param["body"])){
+			$param["body"] = $this->json_encode($param["body"]);
+		}
+		$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token,$param["body"]);
 		if(isset($rsp["errcode"])&&$rsp["errcode"]==40001){
 			$access_token=$this->req_access_token();
-			$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token,array("body"=>$param["body"]));
+			$rsp=$this->req_url("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token,$param["body"]);
 		}
 		return $rsp;
 	}
@@ -105,10 +111,48 @@ class wxapi
 		$url="https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=".$this->AppID."&secret=".$this->AppSecret;
 		$rsp=$this->req_url($url);
 		if(!isset($rsp["access_token"])){
-			$rsp=$this->req_access_token();
+			$rsp=$this->req_url($url);
 		}
 		$this->_instance->cache->redis->save("access_token_of_".$this->AppID, $rsp["access_token"], 60*60*2-300);
 		return $rsp["access_token"];
+	}
+	//对象或对象数组转换为json：微信api不支持中文转义的json结构
+	public function json_encode($arr)
+	{
+		if(is_array($arr)||is_object($arr)){
+			//判断参数是否为纯数组，即以索引值为下标
+			$is_array = false;
+			if(is_array($arr)){
+				$keys = array_keys($arr);
+				$max_length = count($arr) - 1;
+				if (($keys [0] === 0) && ($keys [$max_length] === $max_length )) { //See if the first key is 0 and last key is length - 1
+					$is_array = true;
+				}
+			}
+			if ($is_array){
+				$arr_json='[';
+				for($i=0;$i<count($arr);$i++){
+					$arr_json=$arr_json.($i>0?',':'').$this->json_encode($arr[$i]);
+				}
+				$arr_json=$arr_json.']';
+				return $arr_json;
+			}else{
+				$arr_json='{';
+				$i=0;
+				foreach ($arr as $key=>$val){
+					$arr_json=$arr_json.($i>0?',':'').'"'.$key.'":'.$this->json_encode($val);
+					$i=$i+1;
+				}
+				$arr_json=$arr_json.'}';
+				return $arr_json;
+			}
+		}elseif (is_string($arr)){
+			return '"'.$arr.'"';
+		}elseif (is_numeric($arr)){
+			return $arr;
+		}else {
+			return '""';
+		}
 	}
 }
 
